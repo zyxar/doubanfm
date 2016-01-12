@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	AppName    = "radio_desktop_win"
+	AppName    = "radio_android"
 	AppVersion = "100"
 )
 
