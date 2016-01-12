@@ -1,16 +1,15 @@
 package doubanfm
 
 import (
-	"bufio"
 	"bytes"
 	"encoding/json"
+	"errors"
 	"io"
-	"io/ioutil"
 	"net"
 	"net/http"
-	"os"
 	"strconv"
-	"strings"
+	"sync"
+	"time"
 )
 
 const (
@@ -26,9 +25,12 @@ const (
 )
 
 var (
-	// ip:host
-	proxyUrl string
-	cookies  = make(map[string]*http.Cookie) // cookies
+	cookies     = make(map[string]*http.Cookie) // cookies
+	defaultConn struct {
+		*http.Client
+		sync.Mutex
+		timeout time.Duration
+	}
 )
 
 const (
@@ -42,13 +44,14 @@ const (
 )
 
 func init() {
-	proxyUrl = os.Getenv("http_proxy")
-	if strings.HasPrefix(proxyUrl, "http://") {
-		proxyUrl = strings.TrimPrefix(proxyUrl, "http://")
+	defaultConn.timeout = 5000 * time.Millisecond
+	defaultConn.Client = &http.Client{
+		Transport: &http.Transport{
+			Dial:  (&net.Dialer{Timeout: defaultConn.timeout}).Dial,
+			Proxy: http.ProxyFromEnvironment,
+		},
 	}
-	if strings.HasSuffix(proxyUrl, "/") {
-		proxyUrl = strings.TrimSuffix(proxyUrl, "/")
-	}
+	defaultConn.Mutex = sync.Mutex{}
 }
 
 // {"err":"wrong_version", "r":1}
@@ -62,7 +65,6 @@ func (e dbError) Error() string {
 }
 
 func get(url string) (io.Reader, error) {
-	//fmt.Println(url)
 	r, err := request("GET", url, "", nil)
 	if err != nil {
 		return nil, err
@@ -98,6 +100,28 @@ func saveCookies(cks []*http.Cookie) {
 	}
 }
 
+func routine(req *http.Request) (*http.Response, error) {
+	timeout := false
+retry:
+	defaultConn.Lock()
+	timer := time.AfterFunc(defaultConn.timeout, func() {
+		defaultConn.Client.Transport.(*http.Transport).CancelRequest(req)
+		timeout = true
+	})
+	resp, err := defaultConn.Do(req)
+	if timer != nil {
+		timer.Stop()
+	}
+	defaultConn.Unlock()
+	if err == io.EOF && !timeout {
+		goto retry
+	}
+	if timeout {
+		err = errors.New("Request time out.")
+	}
+	return resp, err
+}
+
 func request(method, url, bodyType string, body io.Reader) (*http.Response, error) {
 	r, err := http.NewRequest(method, url, body)
 	if err != nil {
@@ -109,30 +133,7 @@ func request(method, url, bodyType string, body io.Reader) (*http.Response, erro
 	for _, cookie := range cookies {
 		r.AddCookie(cookie)
 	}
-
-	if proxyUrl == "" {
-		return http.DefaultClient.Do(r)
-	}
-
-	addr, err := net.ResolveTCPAddr("tcp", proxyUrl)
-	if err != nil {
-		return nil, err
-	}
-	conn, err := net.DialTCP("tcp", nil, addr)
-	if err != nil {
-		return nil, err
-	}
-	defer conn.Close()
-
-	if err := r.WriteProxy(conn); err != nil {
-		return nil, err
-	}
-
-	data, err := ioutil.ReadAll(conn)
-	if err != nil {
-		return nil, err
-	}
-	return http.ReadResponse(bufio.NewReader(bytes.NewBuffer(data)), r)
+	return routine(r)
 }
 
 func decode(r io.Reader, v interface{}) error {

@@ -6,10 +6,6 @@ import (
 	"testing"
 )
 
-func init() {
-	ProxyUrl = os.Getenv("http_proxy")
-}
-
 var (
 	user *User
 )
