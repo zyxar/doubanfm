@@ -1,17 +1,17 @@
-gofm - go douban fm
+doubanfm - douban.fm client by Go
 =====
 
-用Google Go语言实现的douban.fm命令行客户端, 基本实现了douban.fm的协议(请查看API.txt)。
+用 Google Go 语言实现的 douban.fm 命令行客户端, 基本实现了 douban.fm 的协议(请查看 API.txt)。
 
 本应用依赖于: go1, glib-2.0, gstreamer-1.0
 
-Go binding for glib: [github.com/ziutek/glib](http://github.com/ziutek/glib)
+Go binding for [glib](http://github.com/ziutek/glib)
 
-Go binding for gstreamer: [github.com/ziutek/gst](http://github.com/ziutek/gst)
+Go binding for [gstreamer](http://github.com/ziutek/gst)
 
 ####命令用法：
 ```
-gofm> h
+doubanfm> h
 Command list:
 	p: 	Pause or play
 	n: 	Next, next song
