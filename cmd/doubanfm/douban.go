@@ -83,11 +83,21 @@ type DoubanFM struct {
 	gst      *gstreamer
 }
 
-func NewDoubanFM() *DoubanFM {
-	return &DoubanFM{
-		opChan: make(chan string, 1),
-		gst:    newGstreamer(),
+func NewDoubanFM() (*DoubanFM, error) {
+	gst, err := newGstreamer()
+	if err != nil {
+		return nil, err
 	}
+	db := &DoubanFM{
+		opChan: make(chan string, 1),
+		gst:    gst,
+	}
+	gst.init(db.onMessage)
+	db.GetChannels()
+	db.Channel = 2
+	db.GetSongs(doubanfm.New)
+	gst.NewSource(db.Next().Url)
+	return db, nil
 }
 
 func (db *DoubanFM) Exec(op string) {
@@ -129,17 +139,7 @@ func (db *DoubanFM) onMessage(bus *gst.Bus, msg *gst.Message) {
 	}
 }
 
-func (db *DoubanFM) init() {
-	db.gst.init(db.onMessage)
-	db.GetChannels()
-	db.Channel = 2
-	db.GetSongs(doubanfm.New)
-	db.gst.NewSource(db.Next().Url)
-}
-
 func (db *DoubanFM) Run() {
-	db.init()
-
 	reader := bufio.NewReader(os.Stdin)
 	fmt.Println("Type h for help!")
 
@@ -387,20 +387,23 @@ type gstreamer struct {
 	pipe     *gst.Element
 }
 
-func newGstreamer() *gstreamer {
+func newGstreamer() (*gstreamer, error) {
+	pipe := gst.ElementFactoryMake("playbin", "mp3_pipe")
+	if pipe == nil {
+		return nil, fmt.Errorf("gstreamer error")
+	}
+
 	return &gstreamer{
 		mainloop: glib.NewMainLoop(nil),
-		pipe:     gst.ElementFactoryMake("playbin", "mp3_pipe"),
-	}
+		pipe:     pipe,
+	}, nil
 }
 
 func (g *gstreamer) init(onMessage func(*gst.Bus, *gst.Message)) {
 	bus := g.pipe.GetBus()
 	bus.AddSignalWatch()
 	bus.Connect("message", onMessage, nil)
-
 	go g.mainloop.Run()
-
 }
 
 func (g *gstreamer) Stop() {
