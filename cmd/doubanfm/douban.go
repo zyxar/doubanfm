@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"strconv"
 	"strings"
 
 	"github.com/ziutek/gst"
@@ -14,6 +13,7 @@ import (
 )
 
 const (
+	OpAgain  = ""
 	OpPlay   = "p"
 	OpLoop   = "x"
 	OpNext   = "n"
@@ -105,94 +105,8 @@ func (db *DoubanFM) onMessage(bus *gst.Bus, msg *gst.Message) {
 }
 
 func (db *DoubanFM) playNext(song doubanfm.Song) {
-	fmt.Printf("PLAYING>> %s - %s\n", song.Title, song.Artist)
+	fmt.Printf("\rPLAYING>> %s - %s\n", song.Title, song.Artist)
 	db.gst.NewSource(song.Url)
-}
-
-func (db *DoubanFM) Run() {
-	reader := bufio.NewReader(os.Stdin)
-	fmt.Println("Type h for help!\n")
-	db.GetChannels()
-	db.Channel = 2
-	db.GetSongs(doubanfm.New)
-	db.playNext(db.Next())
-	for {
-		fmt.Print(PROMPT)
-		op, _ := reader.ReadString('\n')
-		op = strings.ToLower(strings.TrimSpace(op))
-		if op == "" {
-			continue
-		}
-		switch op {
-		case OpPlay:
-			db.Paused = !db.Paused
-			if db.Paused {
-				db.gst.Pause()
-			} else {
-				db.gst.Play()
-			}
-		case OpLoop:
-			db.Loop = !db.Loop
-		case OpNext:
-			if db.Empty() {
-				db.GetSongs(doubanfm.Last)
-			}
-			db.playNext(db.Next())
-		case OpSkip:
-			db.GetSongs(doubanfm.Skip)
-			db.playNext(db.Next())
-		case OpTrash:
-			db.GetSongs(doubanfm.Bypass)
-			db.playNext(db.Next())
-		case OpLike:
-			db.GetSongs(doubanfm.Like)
-			db.Song.Like = 1
-		case OpUnlike:
-			db.GetSongs(doubanfm.Unlike)
-			db.Song.Like = 0
-		case OpLogin:
-			if db.User != nil {
-				db.printUser()
-				continue
-			}
-			db.Login()
-
-			if db.User == nil {
-				fmt.Println("Login Failed")
-				continue
-			}
-			chls := []Channel{
-				{Id: "-3", Name: "红星兆赫"},
-			}
-			chls = append(chls, db.Channels...)
-			db.Channels = chls
-			db.GetLoginChannels()
-		case OpList:
-			db.printPlaylist()
-		case OpSong:
-			db.printSong()
-		case OpExit:
-			fmt.Println("Bye!")
-			os.Exit(0)
-		case OpHelp:
-			fallthrough
-		default:
-			chl, err := strconv.Atoi(op)
-			if err != nil {
-				help()
-				continue
-			}
-			if chl == 0 {
-				db.printChannels()
-				continue
-			}
-			if chl > 0 && chl <= len(db.Channels) {
-				db.Channel = chl
-			}
-			db.GetSongs(doubanfm.New)
-			db.playNext(db.Next())
-		}
-	}
 }
 
 func (db *DoubanFM) GetChannels() {
