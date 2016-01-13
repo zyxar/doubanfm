@@ -1,9 +1,12 @@
 package doubanfm
 
 import (
+	"bytes"
+	"fmt"
 	"math/rand"
 	"net/url"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -34,6 +37,24 @@ type Song struct {
 	Length     int
 	Aid        string
 	Kbps       string
+}
+
+func (s Song) String() string {
+	b := new(bytes.Buffer)
+	fmt.Fprintf(b, "%7s: %s\n", "Title", s.Title)
+	fmt.Fprintf(b, "%7s: %s\n", "Artist", s.Artist)
+	fmt.Fprintf(b, "%7s: %s\n", "Album", s.AlbumTitle)
+	album := s.Album
+	if !strings.HasPrefix(album, "http") {
+		album = "http://www.douban.com" + album
+	}
+	fmt.Fprintf(b, "%7s: %s\n", "Url", s.Url)
+	fmt.Fprintf(b, "%7s: %s\n", "Company", s.Company)
+	fmt.Fprintf(b, "%7s: %s\n", "Public", s.PubTime)
+	fmt.Fprintf(b, "%7s: %s\n", "Kbps", s.Kbps)
+	fmt.Fprintf(b, "%7s: %d\n", "Like", s.Like)
+
+	return b.String()
 }
 
 type Singer struct {

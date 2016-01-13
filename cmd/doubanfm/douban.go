@@ -38,44 +38,12 @@ func (c Channel) String() string {
 	return c.Id + " - " + c.Name
 }
 
-type Song struct {
-	Sid        string
-	Artist     string
-	Title      string
-	Album      string
-	AlbumTitle string
-	PubTime    string
-	Company    string
-	Length     int
-	Kbps       string
-	Url        string
-	Like       int
-}
-
-func (s Song) String() string {
-	b := new(bytes.Buffer)
-	fmt.Fprintf(b, "%7s: %s\n", "Title", s.Title)
-	fmt.Fprintf(b, "%7s: %s\n", "Artist", s.Artist)
-	fmt.Fprintf(b, "%7s: %s\n", "Album", s.AlbumTitle)
-	album := s.Album
-	if !strings.HasPrefix(album, "http") {
-		album = "http://www.douban.com" + album
-	}
-	fmt.Fprintf(b, "%7s: %s\n", "Url", s.Url)
-	fmt.Fprintf(b, "%7s: %s\n", "Company", s.Company)
-	fmt.Fprintf(b, "%7s: %s\n", "Public", s.PubTime)
-	fmt.Fprintf(b, "%7s: %s\n", "Kbps", s.Kbps)
-	fmt.Fprintf(b, "%7s: %d\n", "Like", s.Like)
-
-	return b.String()
-}
-
 type DoubanFM struct {
-	Channels []Channel // channel list
-	Songs    []Song    // playlist
-	Song     Song      // current song
-	Channel  int       // current channel
-	Paused   bool      // play/pause status
+	Channels []Channel       // channel list
+	Songs    []doubanfm.Song // playlist
+	Song     doubanfm.Song   // current song
+	Channel  int             // current channel
+	Paused   bool            // play/pause status
 	Loop     bool
 	User     *doubanfm.User // login user
 	opChan   chan string
@@ -110,7 +78,7 @@ func (db *DoubanFM) Empty() bool {
 	return len(db.Songs) == 0
 }
 
-func (db *DoubanFM) Next() (song Song) {
+func (db *DoubanFM) Next() (song doubanfm.Song) {
 	if db.Empty() {
 		return
 	}
@@ -282,29 +250,8 @@ func (db *DoubanFM) GetSongs(types string) {
 		return
 	}
 
-	var ss []Song
-	for _, song := range songs {
-		ss = append(ss, toSong(song))
-	}
-
-	if len(ss) > 0 {
-		db.Songs = ss
-	}
-}
-
-func toSong(song doubanfm.Song) Song {
-	return Song{
-		Sid:        song.Sid,
-		Artist:     song.Artist,
-		Title:      song.Title,
-		Album:      song.Album,
-		AlbumTitle: song.AlbumTitle,
-		PubTime:    song.PubTime,
-		Company:    song.Company,
-		Length:     song.Length,
-		Kbps:       song.Kbps,
-		Url:        song.Url,
-		Like:       song.Like,
+	if len(songs) > 0 {
+		db.Songs = songs
 	}
 }
 
