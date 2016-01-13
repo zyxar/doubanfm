@@ -9,7 +9,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/ziutek/glib"
 	"github.com/ziutek/gst"
 	"github.com/zyxar/doubanfm"
 )
@@ -62,7 +61,7 @@ func (s Song) String() string {
 	if !strings.HasPrefix(album, "http") {
 		album = "http://www.douban.com" + album
 	}
-	fmt.Fprintf(b, "%7s: %s\n", "Url", album)
+	fmt.Fprintf(b, "%7s: %s\n", "Url", s.Url)
 	fmt.Fprintf(b, "%7s: %s\n", "Company", s.Company)
 	fmt.Fprintf(b, "%7s: %s\n", "Public", s.PubTime)
 	fmt.Fprintf(b, "%7s: %s\n", "Kbps", s.Kbps)
@@ -134,7 +133,8 @@ func (db *DoubanFM) onMessage(bus *gst.Bus, msg *gst.Message) {
 		}
 	case gst.MESSAGE_ERROR:
 		s, param := msg.GetStructure()
-		log.Println("gst error", msg.GetType(), s, param)
+		log.Println("\n[gstreamer]", msg.GetType(), s, param)
+		fmt.Print("doubanfm> ")
 		db.gst.Stop()
 	}
 }
@@ -380,46 +380,4 @@ func (db *DoubanFM) printUser() {
 	fmt.Fprintf(b, "Email: %s\n", db.User.Email)
 	fmt.Fprintf(b, "Name: %s\n", db.User.Name)
 	fmt.Println(b)
-}
-
-type gstreamer struct {
-	mainloop *glib.MainLoop
-	pipe     *gst.Element
-}
-
-func newGstreamer() (*gstreamer, error) {
-	pipe := gst.ElementFactoryMake("playbin", "mp3_pipe")
-	if pipe == nil {
-		return nil, fmt.Errorf("gstreamer error")
-	}
-
-	return &gstreamer{
-		mainloop: glib.NewMainLoop(nil),
-		pipe:     pipe,
-	}, nil
-}
-
-func (g *gstreamer) init(onMessage func(*gst.Bus, *gst.Message)) {
-	bus := g.pipe.GetBus()
-	bus.AddSignalWatch()
-	bus.Connect("message", onMessage, nil)
-	go g.mainloop.Run()
-}
-
-func (g *gstreamer) Stop() {
-	g.pipe.SetState(gst.STATE_NULL)
-}
-
-func (g *gstreamer) Play() {
-	g.pipe.SetState(gst.STATE_PLAYING)
-}
-
-func (g *gstreamer) Pause() {
-	g.pipe.SetState(gst.STATE_PAUSED)
-}
-
-func (g *gstreamer) NewSource(uri string) {
-	g.Stop()
-	g.pipe.SetProperty("uri", uri)
-	g.Play()
 }
