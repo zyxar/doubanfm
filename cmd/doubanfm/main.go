@@ -32,7 +32,7 @@ func loop() {
 	for {
 		op, err = term.ReadLine()
 		if err != nil {
-			panic(err)
+			break
 		}
 		op = strings.ToLower(strings.TrimSpace(op))
 	PREV:
