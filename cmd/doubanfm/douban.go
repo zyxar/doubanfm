@@ -26,6 +26,7 @@ const (
 	OpLogin  = "z"
 	OpHelp   = "h"
 	OpExit   = "q"
+	PROMPT   = "DoubanFM> "
 )
 
 type Channel struct {
@@ -60,10 +61,6 @@ func NewDoubanFM() (*DoubanFM, error) {
 		gst:    gst,
 	}
 	gst.init(db.onMessage)
-	db.GetChannels()
-	db.Channel = 2
-	db.GetSongs(doubanfm.New)
-	gst.NewSource(db.Next().Url)
 	return db, nil
 }
 
@@ -91,28 +88,36 @@ func (db *DoubanFM) onMessage(bus *gst.Bus, msg *gst.Message) {
 	switch msg.GetType() {
 	case gst.MESSAGE_EOS:
 		if db.Loop {
-			db.gst.NewSource(db.Song.Url)
+			db.playNext(db.Song)
 		} else {
 			db.GetSongs(doubanfm.End)
 			if db.Empty() {
 				db.GetSongs(doubanfm.Last)
 			}
-			db.gst.NewSource(db.Next().Url)
+			db.playNext(db.Next())
 		}
 	case gst.MESSAGE_ERROR:
 		s, param := msg.GetStructure()
 		log.Println("\n[gstreamer]", msg.GetType(), s, param)
-		fmt.Print("doubanfm> ")
+		fmt.Print(PROMPT)
 		db.gst.Stop()
 	}
 }
 
+func (db *DoubanFM) playNext(song doubanfm.Song) {
+	fmt.Printf("PLAYING>> %s - %s\n", song.Title, song.Artist)
+	db.gst.NewSource(song.Url)
+}
+
 func (db *DoubanFM) Run() {
 	reader := bufio.NewReader(os.Stdin)
-	fmt.Println("Type h for help!")
-
+	fmt.Println("Type h for help!\n")
+	db.GetChannels()
+	db.Channel = 2
+	db.GetSongs(doubanfm.New)
+	db.playNext(db.Next())
 	for {
-		fmt.Print("doubanfm> ")
+		fmt.Print(PROMPT)
 		op, _ := reader.ReadString('\n')
 		op = strings.ToLower(strings.TrimSpace(op))
 		if op == "" {
@@ -132,13 +137,13 @@ func (db *DoubanFM) Run() {
 			if db.Empty() {
 				db.GetSongs(doubanfm.Last)
 			}
-			db.gst.NewSource(db.Next().Url)
+			db.playNext(db.Next())
 		case OpSkip:
 			db.GetSongs(doubanfm.Skip)
-			db.gst.NewSource(db.Next().Url)
+			db.playNext(db.Next())
 		case OpTrash:
 			db.GetSongs(doubanfm.Bypass)
-			db.gst.NewSource(db.Next().Url)
+			db.playNext(db.Next())
 		case OpLike:
 			db.GetSongs(doubanfm.Like)
 			db.Song.Like = 1
@@ -185,7 +190,7 @@ func (db *DoubanFM) Run() {
 				db.Channel = chl
 			}
 			db.GetSongs(doubanfm.New)
-			db.gst.NewSource(db.Next().Url)
+			db.playNext(db.Next())
 		}
 	}
 }
