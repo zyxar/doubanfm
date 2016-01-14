@@ -32,7 +32,7 @@ func loop() {
 	dfm.GetChannels()
 	dfm.Channel = 1
 	dfm.GetSongs(doubanfm.New)
-	dfm.playNext(dfm.Next())
+	dfm.playSong(dfm.Next())
 	var op string
 	var prevOp = OpNext
 	for {
@@ -54,7 +54,7 @@ func loop() {
 			if dfm.Paused {
 				dfm.player.Pause()
 			} else {
-				dfm.player.Play()
+				dfm.player.Resume()
 			}
 		case OpLoop:
 			dfm.Loop = !dfm.Loop
@@ -62,13 +62,13 @@ func loop() {
 			if dfm.Empty() {
 				dfm.GetSongs(doubanfm.Last)
 			}
-			dfm.playNext(dfm.Next())
+			dfm.playSong(dfm.Next())
 		case OpSkip:
 			dfm.GetSongs(doubanfm.Skip)
-			dfm.playNext(dfm.Next())
+			dfm.playSong(dfm.Next())
 		case OpTrash:
 			dfm.GetSongs(doubanfm.Bypass)
-			dfm.playNext(dfm.Next())
+			dfm.playSong(dfm.Next())
 		case OpLike:
 			dfm.GetSongs(doubanfm.Like)
 			dfm.Song.Like = 1
@@ -115,7 +115,7 @@ func loop() {
 				dfm.Channel = chl
 			}
 			dfm.GetSongs(doubanfm.New)
-			dfm.playNext(dfm.Next())
+			dfm.playSong(dfm.Next())
 		}
 		prevOp = op
 	}

@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"sync"
 
 	"github.com/ziutek/glib"
 	"github.com/ziutek/gst"
@@ -10,6 +11,7 @@ import (
 type Player struct {
 	mainloop *glib.MainLoop
 	pipe     *gst.Element
+	sync.Mutex
 }
 
 func newPlayer() (*Player, error) {
@@ -32,19 +34,27 @@ func (this *Player) init(onMessage func(*gst.Bus, *gst.Message)) {
 }
 
 func (this *Player) Stop() {
+	this.Lock()
 	this.pipe.SetState(gst.STATE_NULL)
+	this.Unlock()
 }
 
-func (this *Player) Play() {
+func (this *Player) Resume() {
+	this.Lock()
 	this.pipe.SetState(gst.STATE_PLAYING)
+	this.Unlock()
 }
 
 func (this *Player) Pause() {
+	this.Lock()
 	this.pipe.SetState(gst.STATE_PAUSED)
+	this.Unlock()
 }
 
-func (this *Player) NewSource(uri string) {
-	this.Stop()
+func (this *Player) Play(uri string) {
+	this.Lock()
+	this.pipe.SetState(gst.STATE_NULL)
 	this.pipe.SetProperty("uri", uri)
-	this.Play()
+	this.pipe.SetState(gst.STATE_PLAYING)
+	this.Unlock()
 }

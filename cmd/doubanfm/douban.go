@@ -88,13 +88,13 @@ func (this *DoubanFM) onMessage(bus *gst.Bus, msg *gst.Message) {
 	switch msg.GetType() {
 	case gst.MESSAGE_EOS:
 		if this.Loop {
-			this.playNext(this.Song)
+			this.playSong(this.Song)
 		} else {
 			this.GetSongs(doubanfm.End)
 			if this.Empty() {
 				this.GetSongs(doubanfm.Last)
 			}
-			this.playNext(this.Next())
+			this.playSong(this.Next())
 		}
 	case gst.MESSAGE_ERROR:
 		s, param := msg.GetStructure()
@@ -104,9 +104,9 @@ func (this *DoubanFM) onMessage(bus *gst.Bus, msg *gst.Message) {
 	}
 }
 
-func (this *DoubanFM) playNext(song doubanfm.Song) {
+func (this *DoubanFM) playSong(song doubanfm.Song) {
 	fmt.Printf("\rPLAYING>> %s - %s\n", song.Title, song.Artist)
-	this.player.NewSource(song.Url)
+	this.player.Play(song.Url)
 }
 
 func (this *DoubanFM) GetChannels() {
