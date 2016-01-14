@@ -10,16 +10,12 @@ import (
 	"github.com/zyxar/doubanfm"
 )
 
-func main() {
-	loop()
-}
-
 func quit() {
 	fmt.Println("\rBye!")
 	os.Exit(0)
 }
 
-func loop() {
+func main() {
 	term := newTerm()
 	defer term.Restore()
 
