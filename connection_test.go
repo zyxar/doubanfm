@@ -2,7 +2,6 @@ package doubanfm
 
 import (
 	"fmt"
-	"os"
 	"testing"
 )
 
@@ -58,7 +57,7 @@ func TestLoginChannels(t *testing.T) {
 }
 
 func TestNewChannel(t *testing.T) {
-	songs, err := Songs(OpNew, "-3", "", user)
+	songs, err := Songs(New, "-3", "", user)
 	if err != nil {
 		t.Error(err)
 		return
