@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"strconv"
 	"strings"
@@ -11,6 +12,11 @@ import (
 
 func main() {
 	loop()
+}
+
+func quit() {
+	fmt.Println("\rBye!")
+	os.Exit(0)
 }
 
 func loop() {
@@ -31,8 +37,11 @@ func loop() {
 	var prevOp = OpNext
 	for {
 		op, err = term.ReadLine()
-		if err != nil {
-			break
+		if err == io.EOF {
+			quit()
+		} else if err != nil {
+			fmt.Println(err)
+			continue
 		}
 		op = strings.ToLower(strings.TrimSpace(op))
 	PREV:
@@ -83,13 +92,13 @@ func loop() {
 			chls = append(chls, db.Channels...)
 			db.Channels = chls
 			db.GetLoginChannels()
+			continue
 		case OpList:
 			db.printPlaylist()
 		case OpSong:
 			db.printSong()
 		case OpExit:
-			fmt.Println("Bye!")
-			os.Exit(0)
+			quit()
 		case OpHelp:
 			fallthrough
 		default:
