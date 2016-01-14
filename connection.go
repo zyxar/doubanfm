@@ -55,12 +55,12 @@ func init() {
 }
 
 // {"err":"wrong_version", "r":1}
-type dbError struct {
+type dfmError struct {
 	R   int
 	Err string
 }
 
-func (e dbError) Error() string {
+func (e dfmError) Error() string {
 	return strconv.Itoa(e.R) + ": " + e.Err
 }
 

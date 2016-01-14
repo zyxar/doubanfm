@@ -45,71 +45,71 @@ type DoubanFM struct {
 	Song     doubanfm.Song   // current song
 	Channel  int             // current channel
 	Paused   bool            // play/pause status
-	Loop     bool
-	User     *doubanfm.User // login user
+	Loop     bool            // loop status
+	User     *doubanfm.User  // login user
+	player   *Player
 	opChan   chan string
-	gst      *gstreamer
 }
 
 func NewDoubanFM() (*DoubanFM, error) {
-	gst, err := newGstreamer()
+	player, err := newPlayer()
 	if err != nil {
 		return nil, err
 	}
-	db := &DoubanFM{
+	dfm := &DoubanFM{
 		opChan: make(chan string, 1),
-		gst:    gst,
+		player: player,
 	}
-	gst.init(db.onMessage)
-	return db, nil
+	player.init(dfm.onMessage)
+	return dfm, nil
 }
 
-func (db *DoubanFM) Exec(op string) {
+func (this *DoubanFM) Exec(op string) {
 	select {
-	case db.opChan <- op:
+	case this.opChan <- op:
 	default:
 	}
 }
 
-func (db *DoubanFM) Empty() bool {
-	return len(db.Songs) == 0
+func (this *DoubanFM) Empty() bool {
+	return len(this.Songs) == 0
 }
 
-func (db *DoubanFM) Next() (song doubanfm.Song) {
-	if db.Empty() {
+func (this *DoubanFM) Next() (song doubanfm.Song) {
+	if this.Empty() {
 		return
 	}
-	db.Song = db.Songs[0]
-	db.Songs = db.Songs[1:]
-	return db.Song
+	this.Song = this.Songs[0]
+	this.Songs = this.Songs[1:]
+	return this.Song
 }
 
-func (db *DoubanFM) onMessage(bus *gst.Bus, msg *gst.Message) {
+func (this *DoubanFM) onMessage(bus *gst.Bus, msg *gst.Message) {
 	switch msg.GetType() {
 	case gst.MESSAGE_EOS:
-		if db.Loop {
-			db.playNext(db.Song)
+		if this.Loop {
+			this.playNext(this.Song)
 		} else {
-			db.GetSongs(doubanfm.End)
-			if db.Empty() {
-				db.GetSongs(doubanfm.Last)
+			this.GetSongs(doubanfm.End)
+			if this.Empty() {
+				this.GetSongs(doubanfm.Last)
 			}
-			db.playNext(db.Next())
+			this.playNext(this.Next())
 		}
 	case gst.MESSAGE_ERROR:
 		s, param := msg.GetStructure()
 		log.Println("\n[gstreamer]", msg.GetType(), s, param)
 		fmt.Print(PROMPT)
-		db.gst.Stop()
+		this.player.Stop()
 	}
 }
 
-func (db *DoubanFM) playNext(song doubanfm.Song) {
+func (this *DoubanFM) playNext(song doubanfm.Song) {
 	fmt.Printf("\rPLAYING>> %s - %s\n", song.Title, song.Artist)
-	db.gst.NewSource(song.Url)
+	this.player.NewSource(song.Url)
 }
 
-func (db *DoubanFM) GetChannels() {
+func (this *DoubanFM) GetChannels() {
 	chls, err := doubanfm.Channels()
 	if err != nil {
 		log.Println(err)
@@ -118,32 +118,32 @@ func (db *DoubanFM) GetChannels() {
 	for _, chl := range chls {
 		ch = append(ch, toChannel(chl))
 	}
-	db.Channels = ch
+	this.Channels = ch
 }
 
-func (db *DoubanFM) GetLoginChannels() {
-	if db.User == nil {
+func (this *DoubanFM) GetLoginChannels() {
+	if this.User == nil {
 		return
 	}
-	favs, recs, err := doubanfm.LoginChannels(db.User.Id)
+	favs, recs, err := doubanfm.LoginChannels(this.User.Id)
 	if err != nil {
 		log.Println(err)
 	}
 
 	for _, fav := range favs {
 		find := false
-		for i, chl := range db.Channels {
+		for i, chl := range this.Channels {
 			if chl.Id == fav.Id.String() {
-				db.Channels[i].Fav = true
+				this.Channels[i].Fav = true
 				find = true
 			}
 		}
 		if !find {
-			db.Channels = append(db.Channels, toChannelLogin(fav))
+			this.Channels = append(this.Channels, toChannelLogin(fav))
 		}
 	}
 	for _, rec := range recs {
-		db.Channels = append(db.Channels, toChannelLogin(rec))
+		this.Channels = append(this.Channels, toChannelLogin(rec))
 	}
 }
 
@@ -161,28 +161,28 @@ func toChannelLogin(chl doubanfm.LoginChannel) Channel {
 	}
 }
 
-func (db *DoubanFM) GetSongs(types string) {
-	chl := db.Channels[db.Channel-1].Id
-	songs, err := doubanfm.Songs(types, chl, db.Song.Sid, db.User)
+func (this *DoubanFM) GetSongs(types string) {
+	chl := this.Channels[this.Channel-1].Id
+	songs, err := doubanfm.Songs(types, chl, this.Song.Sid, this.User)
 	if err != nil {
 		log.Println(err)
 		return
 	}
 
 	if len(songs) > 0 {
-		db.Songs = songs
+		this.Songs = songs
 	}
 }
 
-func (db *DoubanFM) Login() {
-	var id, pwd string
+func (this *DoubanFM) Login() {
+	var uid, pwd string
 
 	reader := bufio.NewReader(os.Stdin)
 	for {
 		fmt.Print("Douban ID: ")
-		id, _ = reader.ReadString('\n')
-		id = strings.TrimSpace(id)
-		if id != "" {
+		uid, _ = reader.ReadString('\n')
+		uid = strings.TrimSpace(uid)
+		if uid != "" {
 			break
 		}
 	}
@@ -196,15 +196,15 @@ func (db *DoubanFM) Login() {
 		}
 	}
 
-	db.User, _ = doubanfm.Login(id, pwd)
+	this.User, _ = doubanfm.Login(uid, pwd)
 }
 
-func (db *DoubanFM) printChannels() {
+func (this *DoubanFM) printChannels() {
 	b := &bytes.Buffer{}
-	for i, chl := range db.Channels {
+	for i, chl := range this.Channels {
 		cur := "-"
 		fav := ""
-		if i == db.Channel-1 {
+		if i == this.Channel-1 {
 			cur = "+"
 		}
 		if chl.Fav {
@@ -215,35 +215,35 @@ func (db *DoubanFM) printChannels() {
 	fmt.Println(b)
 }
 
-func (db *DoubanFM) printPlaylist() {
+func (this *DoubanFM) printPlaylist() {
 	b := &bytes.Buffer{}
-	if db.Song.Sid != "" {
+	if this.Song.Sid != "" {
 		loop := "-"
-		if db.Loop {
+		if this.Loop {
 			loop = "*"
 		}
 		fmt.Fprintf(b, "%s %s %s\n",
-			db.Song.Title, loop, db.Song.Artist)
+			this.Song.Title, loop, this.Song.Artist)
 	}
-	for _, song := range db.Songs {
+	for _, song := range this.Songs {
 		fmt.Fprintf(b, "%s - %s\n",
 			song.Title, song.Artist)
 	}
 	fmt.Println(b)
 }
 
-func (db *DoubanFM) printSong() {
-	fmt.Println(db.Song)
+func (this *DoubanFM) printSong() {
+	fmt.Println(this.Song)
 }
 
-func (db *DoubanFM) printUser() {
-	if db.User == nil {
+func (this *DoubanFM) printUser() {
+	if this.User == nil {
 		fmt.Println("Not Login")
 		return
 	}
 	b := new(bytes.Buffer)
-	fmt.Fprintf(b, "Id: %s\n", db.User.Id)
-	fmt.Fprintf(b, "Email: %s\n", db.User.Email)
-	fmt.Fprintf(b, "Name: %s\n", db.User.Name)
+	fmt.Fprintf(b, "Id: %s\n", this.User.Id)
+	fmt.Fprintf(b, "Email: %s\n", this.User.Email)
+	fmt.Fprintf(b, "Name: %s\n", this.User.Name)
 	fmt.Println(b)
 }

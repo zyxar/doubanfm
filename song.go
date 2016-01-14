@@ -39,20 +39,20 @@ type Song struct {
 	Kbps       string
 }
 
-func (s Song) String() string {
+func (this Song) String() string {
 	b := new(bytes.Buffer)
-	fmt.Fprintf(b, "%7s: %s\n", "Title", s.Title)
-	fmt.Fprintf(b, "%7s: %s\n", "Artist", s.Artist)
-	fmt.Fprintf(b, "%7s: %s\n", "Album", s.AlbumTitle)
-	album := s.Album
+	fmt.Fprintf(b, "%7s: %s\n", "Title", this.Title)
+	fmt.Fprintf(b, "%7s: %s\n", "Artist", this.Artist)
+	fmt.Fprintf(b, "%7s: %s\n", "Album", this.AlbumTitle)
+	album := this.Album
 	if !strings.HasPrefix(album, "http") {
 		album = "http://www.douban.com" + album
 	}
-	fmt.Fprintf(b, "%7s: %s\n", "Url", s.Url)
-	fmt.Fprintf(b, "%7s: %s\n", "Company", s.Company)
-	fmt.Fprintf(b, "%7s: %s\n", "Public", s.PubTime)
-	fmt.Fprintf(b, "%7s: %s\n", "Kbps", s.Kbps)
-	fmt.Fprintf(b, "%7s: %d\n", "Like", s.Like)
+	fmt.Fprintf(b, "%7s: %s\n", "Url", this.Url)
+	fmt.Fprintf(b, "%7s: %s\n", "Company", this.Company)
+	fmt.Fprintf(b, "%7s: %s\n", "Public", this.PubTime)
+	fmt.Fprintf(b, "%7s: %s\n", "Kbps", this.Kbps)
+	fmt.Fprintf(b, "%7s: %d\n", "Like", this.Like)
 
 	return b.String()
 }
@@ -129,7 +129,7 @@ func Songs(types, cid, sid string, user *User) (songs []Song, err error) {
 		Logout     int
 		VMax       int `json:"version_max"`
 		QuickStart int `json"is_show_quick_start"`
-		dbError
+		dfmError
 	}
 
 	if err = decode(resp, &r); err != nil {
@@ -137,7 +137,7 @@ func Songs(types, cid, sid string, user *User) (songs []Song, err error) {
 	}
 
 	if r.R != 0 {
-		return nil, &r.dbError
+		return nil, &r.dfmError
 	}
 
 	return r.Song, nil

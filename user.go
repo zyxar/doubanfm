@@ -13,13 +13,13 @@ type User struct {
 	Expire string
 }
 
-func Login(id, password string) (*User, error) {
+func Login(uid, password string) (*User, error) {
 	formdata := &bytes.Buffer{}
 
 	w := multipart.NewWriter(formdata)
 	w.WriteField("app_name", AppName)
 	w.WriteField("version", AppVersion)
-	w.WriteField("email", id)
+	w.WriteField("email", uid)
 	w.WriteField("password", password)
 	defer w.Close()
 
@@ -30,7 +30,7 @@ func Login(id, password string) (*User, error) {
 
 	var r struct {
 		User
-		dbError
+		dfmError
 	}
 
 	if err = decode(resp, &r); err != nil {
@@ -38,7 +38,7 @@ func Login(id, password string) (*User, error) {
 	}
 
 	if r.R != 0 {
-		return nil, &r.dbError
+		return nil, &r.dfmError
 	}
 	return &r.User, nil
 }

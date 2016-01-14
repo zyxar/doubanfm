@@ -23,16 +23,16 @@ func loop() {
 	term := newTerm()
 	defer term.Restore()
 
-	db, err := NewDoubanFM()
+	dfm, err := NewDoubanFM()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
 
-	db.GetChannels()
-	db.Channel = 1
-	db.GetSongs(doubanfm.New)
-	db.playNext(db.Next())
+	dfm.GetChannels()
+	dfm.Channel = 1
+	dfm.GetSongs(doubanfm.New)
+	dfm.playNext(dfm.Next())
 	var op string
 	var prevOp = OpNext
 	for {
@@ -50,53 +50,53 @@ func loop() {
 			op = prevOp
 			goto PREV
 		case OpPlay:
-			db.Paused = !db.Paused
-			if db.Paused {
-				db.gst.Pause()
+			dfm.Paused = !dfm.Paused
+			if dfm.Paused {
+				dfm.player.Pause()
 			} else {
-				db.gst.Play()
+				dfm.player.Play()
 			}
 		case OpLoop:
-			db.Loop = !db.Loop
+			dfm.Loop = !dfm.Loop
 		case OpNext:
-			if db.Empty() {
-				db.GetSongs(doubanfm.Last)
+			if dfm.Empty() {
+				dfm.GetSongs(doubanfm.Last)
 			}
-			db.playNext(db.Next())
+			dfm.playNext(dfm.Next())
 		case OpSkip:
-			db.GetSongs(doubanfm.Skip)
-			db.playNext(db.Next())
+			dfm.GetSongs(doubanfm.Skip)
+			dfm.playNext(dfm.Next())
 		case OpTrash:
-			db.GetSongs(doubanfm.Bypass)
-			db.playNext(db.Next())
+			dfm.GetSongs(doubanfm.Bypass)
+			dfm.playNext(dfm.Next())
 		case OpLike:
-			db.GetSongs(doubanfm.Like)
-			db.Song.Like = 1
+			dfm.GetSongs(doubanfm.Like)
+			dfm.Song.Like = 1
 		case OpUnlike:
-			db.GetSongs(doubanfm.Unlike)
-			db.Song.Like = 0
+			dfm.GetSongs(doubanfm.Unlike)
+			dfm.Song.Like = 0
 		case OpLogin:
-			if db.User != nil {
-				db.printUser()
+			if dfm.User != nil {
+				dfm.printUser()
 				continue
 			}
-			db.Login()
+			dfm.Login()
 
-			if db.User == nil {
+			if dfm.User == nil {
 				fmt.Println("Login Failed")
 				continue
 			}
 			chls := []Channel{
 				{Id: "-3", Name: "红星兆赫"},
 			}
-			chls = append(chls, db.Channels...)
-			db.Channels = chls
-			db.GetLoginChannels()
+			chls = append(chls, dfm.Channels...)
+			dfm.Channels = chls
+			dfm.GetLoginChannels()
 			continue
 		case OpList:
-			db.printPlaylist()
+			dfm.printPlaylist()
 		case OpSong:
-			db.printSong()
+			dfm.printSong()
 		case OpExit:
 			quit()
 		case OpHelp:
@@ -108,14 +108,14 @@ func loop() {
 				continue
 			}
 			if chl == 0 {
-				db.printChannels()
+				dfm.printChannels()
 				continue
 			}
-			if chl > 0 && chl <= len(db.Channels) {
-				db.Channel = chl
+			if chl > 0 && chl <= len(dfm.Channels) {
+				dfm.Channel = chl
 			}
-			db.GetSongs(doubanfm.New)
-			db.playNext(db.Next())
+			dfm.GetSongs(doubanfm.New)
+			dfm.playNext(dfm.Next())
 		}
 		prevOp = op
 	}

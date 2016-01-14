@@ -29,10 +29,10 @@ func newTerm() *Term {
 	return term
 }
 
-func (id *Term) Restore() {
-	terminal.Restore(0, id.s)
+func (this *Term) Restore() {
+	terminal.Restore(0, this.s)
 }
 
-func (id *Term) ReadLine() (string, error) {
-	return id.t.ReadLine()
+func (this *Term) ReadLine() (string, error) {
+	return this.t.ReadLine()
 }
