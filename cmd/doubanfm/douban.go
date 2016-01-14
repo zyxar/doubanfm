@@ -48,7 +48,6 @@ type DoubanFM struct {
 	Loop     bool            // loop status
 	User     *doubanfm.User  // login user
 	player   *Player
-	opChan   chan string
 }
 
 func NewDoubanFM() (*DoubanFM, error) {
@@ -57,18 +56,10 @@ func NewDoubanFM() (*DoubanFM, error) {
 		return nil, err
 	}
 	dfm := &DoubanFM{
-		opChan: make(chan string, 1),
 		player: player,
 	}
 	player.init(dfm.onMessage)
 	return dfm, nil
-}
-
-func (this *DoubanFM) Exec(op string) {
-	select {
-	case this.opChan <- op:
-	default:
-	}
 }
 
 func (this *DoubanFM) Empty() bool {
