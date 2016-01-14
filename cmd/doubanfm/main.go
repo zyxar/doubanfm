@@ -16,12 +16,12 @@ func quit() {
 }
 
 func main() {
-	term := newTerm()
-	defer term.Restore()
+	term := newTerm(PROMPT)
 
 	dfm, err := NewDoubanFM()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
+		term.Restore()
 		os.Exit(1)
 	}
 
@@ -34,6 +34,7 @@ func main() {
 	for {
 		op, err = term.ReadLine()
 		if err == io.EOF {
+			term.Restore()
 			quit()
 		} else if err != nil {
 			fmt.Println(err)
@@ -76,12 +77,14 @@ func main() {
 				dfm.printUser()
 				continue
 			}
-			dfm.Login()
-
-			if dfm.User == nil {
-				fmt.Println("Login Failed")
+			err := dfm.Login()
+			if err != nil {
+				fmt.Println("\r>>>>>>>>> Login Failed:", err)
 				continue
 			}
+			fmt.Println("\r>>>>>>>>> Access acquired.")
+			fmt.Printf("\rId:\t%s\nName:\t%s\nToken:\t%s\nExpire:\t%s\n",
+				dfm.User.Id, dfm.User.Name, dfm.User.Token, dfm.User.Expire)
 			chls := []Channel{
 				{Id: "-3", Name: "红星兆赫"},
 			}
@@ -94,6 +97,7 @@ func main() {
 		case OpSong:
 			dfm.printSong()
 		case OpExit:
+			term.Restore()
 			quit()
 		case OpHelp:
 			fallthrough
@@ -115,6 +119,7 @@ func main() {
 		}
 		prevOp = op
 	}
+	term.Restore()
 }
 
 func help() {

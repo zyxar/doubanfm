@@ -15,13 +15,12 @@ type User struct {
 
 func Login(uid, password string) (*User, error) {
 	formdata := &bytes.Buffer{}
-
 	w := multipart.NewWriter(formdata)
 	w.WriteField("app_name", AppName)
 	w.WriteField("version", AppVersion)
 	w.WriteField("email", uid)
 	w.WriteField("password", password)
-	defer w.Close()
+	w.Close()
 
 	resp, err := post(LoginUrl, w.FormDataContentType(), formdata)
 	if err != nil {

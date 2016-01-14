@@ -18,14 +18,14 @@ type Term struct {
 	t *terminal.Terminal
 }
 
-func newTerm() *Term {
+func newTerm(prompt string) *Term {
 	term := new(Term)
 	var err error
 	term.s, err = terminal.MakeRaw(0)
 	if err != nil {
 		panic(err)
 	}
-	term.t = terminal.NewTerminal(os.Stdin, PROMPT)
+	term.t = terminal.NewTerminal(os.Stdin, prompt)
 	return term
 }
 
@@ -35,4 +35,8 @@ func (this *Term) Restore() {
 
 func (this *Term) ReadLine() (string, error) {
 	return this.t.ReadLine()
+}
+
+func (this *Term) ReadPassword(prompt string) (string, error) {
+	return this.t.ReadPassword(prompt)
 }

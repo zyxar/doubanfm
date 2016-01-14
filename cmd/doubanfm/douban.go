@@ -1,12 +1,9 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"log"
-	"os"
-	"strings"
 
 	"github.com/ziutek/gst"
 	"github.com/zyxar/doubanfm"
@@ -165,29 +162,19 @@ func (this *DoubanFM) GetSongs(types string) {
 	}
 }
 
-func (this *DoubanFM) Login() {
-	var uid, pwd string
-
-	reader := bufio.NewReader(os.Stdin)
-	for {
-		fmt.Print("Douban ID: ")
-		uid, _ = reader.ReadString('\n')
-		uid = strings.TrimSpace(uid)
-		if uid != "" {
-			break
-		}
+func (this *DoubanFM) Login() error {
+	term := newTerm("Douban Id: ")
+	defer term.Restore()
+	uid, err := term.ReadLine()
+	if err != nil {
+		return err
 	}
-
-	for {
-		fmt.Print("Password: ")
-		pwd, _ = reader.ReadString('\n')
-		pwd = strings.TrimRight(pwd, "\n")
-		if pwd != "" {
-			break
-		}
+	pwd, err := term.ReadPassword("Password: ")
+	if err != nil {
+		return err
 	}
-
-	this.User, _ = doubanfm.Login(uid, pwd)
+	this.User, err = doubanfm.Login(uid, string(pwd))
+	return err
 }
 
 func (this *DoubanFM) printChannels() {
