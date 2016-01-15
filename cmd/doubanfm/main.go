@@ -6,6 +6,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/zyxar/doubanfm"
 )
@@ -13,6 +14,14 @@ import (
 func quit() {
 	fmt.Println("\rBye!")
 	os.Exit(0)
+}
+
+func parseTime(ut string) string {
+	if sec, err := strconv.ParseInt(ut, 10, 64); err == nil {
+		t := time.Unix(sec, 0)
+		return t.String()
+	}
+	return ut
 }
 
 func main() {
@@ -35,6 +44,7 @@ func main() {
 		op, err = term.ReadLine()
 		if err == io.EOF {
 			term.Restore()
+			fmt.Println()
 			quit()
 		} else if err != nil {
 			fmt.Println(err)
@@ -83,8 +93,8 @@ func main() {
 				continue
 			}
 			fmt.Println("\r>>>>>>>>> Access acquired.")
-			fmt.Printf("\rId:\t%s\nName:\t%s\nToken:\t%s\nExpire:\t%s\n",
-				dfm.User.Id, dfm.User.Name, dfm.User.Token, dfm.User.Expire)
+			fmt.Printf("\r    Id:\t%s\n  Name:\t%s\n Token:\t%s\nExpire:\t%s\n",
+				dfm.User.Id, dfm.User.Name, dfm.User.Token, parseTime(dfm.User.Expire))
 			chls := []Channel{
 				{Id: "-3", Name: "红星兆赫"},
 			}
