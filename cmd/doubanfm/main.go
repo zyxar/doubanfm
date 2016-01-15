@@ -18,21 +18,21 @@ var (
 
 func init() {
 	flag.StringVar(&userId, "login", "", "login id")
-	helpStr = `Command list:
-	p: 	Pause or play
-	n: 	Next, next song
-	x:	Loop, loop playback
-	s:	Skip, skip current playlist
-	t: 	Trash, never play
-	r: 	Like
-	u:	Unlike
-	c:	Current playing info
-	l: 	Playlist
-	0: 	Channel list
-	N:	Change to Channel N, N stands for channel number, see channel list
-	z:	Login, Account login
-	q:	Quit
-	h:	Show this help
+	helpStr = `Operation list:
+             p: Pause or play
+             n: Next, next song
+             x: Loop, loop playback
+             s: Skip, skip current playlist
+             t: Trash, never play
+             r: Like
+             u: Unlike
+             c: Current playing info
+             l: Playlist
+             0: Channel list
+             N: Change to Channel N, N stands for channel number, see channel list
+             z: Login, Account login
+             q: Quit
+             h: Show this help
 `
 }
 
@@ -42,7 +42,7 @@ func main() {
 
 	var quit = func(code int) {
 		term.Restore()
-		fmt.Println("\rBye!")
+		fmt.Println("\r>>>>>>>>> Bye!")
 		os.Exit(code)
 	}
 
@@ -150,6 +150,7 @@ func main() {
 				dfm.GetSongs(doubanfm.New)
 				dfm.playSong(dfm.Next())
 			} else {
+				fmt.Println("\r>>>>>>>>> No such operation:", op)
 				help()
 				prevOp = OpHelp
 				continue

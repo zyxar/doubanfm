@@ -1,17 +1,12 @@
-// +build darwin freebsd netbsd openbsd linux
+//+build darwin freebsd netbsd openbsd linux
 
 package main
 
 import (
-	"fmt"
 	"os"
 
 	"golang.org/x/crypto/ssh/terminal"
 )
-
-func clearscr() {
-	fmt.Printf("%c[2J%c[0;0H", 27, 27)
-}
 
 type Term struct {
 	s *terminal.State
