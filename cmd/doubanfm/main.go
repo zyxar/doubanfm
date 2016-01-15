@@ -1,51 +1,97 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"io"
 	"os"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/zyxar/doubanfm"
 )
 
-func quit() {
-	fmt.Println("\rBye!")
-	os.Exit(0)
-}
+var (
+	userId  string
+	helpStr string
+)
 
-func parseTime(ut string) string {
-	if sec, err := strconv.ParseInt(ut, 10, 64); err == nil {
-		t := time.Unix(sec, 0)
-		return t.String()
-	}
-	return ut
+func init() {
+	flag.StringVar(&userId, "login", "", "login id")
+	helpStr = `Command list:
+	p: 	Pause or play
+	n: 	Next, next song
+	x:	Loop, loop playback
+	s:	Skip, skip current playlist
+	t: 	Trash, never play
+	r: 	Like
+	u:	Unlike
+	c:	Current playing info
+	l: 	Playlist
+	0: 	Channel list
+	N:	Change to Channel N, N stands for channel number, see channel list
+	z:	Login, Account login
+	q:	Quit
+	h:	Show this help
+`
 }
 
 func main() {
+	flag.Parse()
 	term := newTerm(PROMPT)
+
+	var quit = func(code int) {
+		term.Restore()
+		fmt.Println("\rBye!")
+		os.Exit(code)
+	}
 
 	dfm, err := NewDoubanFM()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
-		term.Restore()
-		os.Exit(1)
+		quit(1)
+	}
+
+	var logon = func(uid string) {
+		if dfm.User != nil {
+			dfm.printUser()
+			return
+		}
+		err := dfm.Login(uid)
+		if err != nil {
+			fmt.Println("\r>>>>>>>>> Access denied:", err)
+			return
+		}
+		fmt.Println("\r>>>>>>>>> Access acquired.")
+		dfm.printUser()
+		dfm.GetMyChannels()
+		return
 	}
 
 	dfm.GetChannels()
-	dfm.Channel = 1
+	if userId != "" {
+		logon(userId)
+	}
+	dfm.SetDefaultChannel()
+	if dfm.Channel == nil {
+		fmt.Println("\r>>>>>>>>> Error in fetching channels.")
+		quit(1)
+	}
+	dfm.printChannel()
 	dfm.GetSongs(doubanfm.New)
+	if dfm.Empty() {
+		fmt.Println("\r>>>>>>>>> Error in fetching songs.")
+		quit(1)
+	}
 	dfm.playSong(dfm.Next())
+
 	var op string
 	var prevOp = OpNext
 	for {
 		op, err = term.ReadLine()
 		if err == io.EOF {
-			term.Restore()
 			fmt.Println()
-			quit()
+			quit(0)
 		} else if err != nil {
 			fmt.Println(err)
 			continue
@@ -83,49 +129,31 @@ func main() {
 			dfm.GetSongs(doubanfm.Unlike)
 			dfm.Song.Like = 0
 		case OpLogin:
-			if dfm.User != nil {
-				dfm.printUser()
-				continue
-			}
-			err := dfm.Login()
-			if err != nil {
-				fmt.Println("\r>>>>>>>>> Access denied:", err)
-				continue
-			}
-			fmt.Println("\r>>>>>>>>> Access acquired.")
-			fmt.Printf("\r    Id:\t%s\n  Name:\t%s\n Token:\t%s\nExpire:\t%s\n",
-				dfm.User.Id, dfm.User.Name, dfm.User.Token, parseTime(dfm.User.Expire))
-			chls := []Channel{
-				{Id: "-3", Name: "红星兆赫"},
-			}
-			chls = append(chls, dfm.Channels...)
-			dfm.Channels = chls
-			dfm.GetLoginChannels()
+			logon("")
 			continue
 		case OpList:
 			dfm.printPlaylist()
 		case OpSong:
 			dfm.printSong()
 		case OpExit:
-			term.Restore()
-			quit()
+			quit(0)
+		case OpChann:
+			dfm.printChannels()
 		case OpHelp:
-			fallthrough
+			help()
 		default:
-			chl, err := strconv.Atoi(op)
-			if err != nil {
+			if ch, err := strconv.Atoi(op); err == nil &&
+				ch > 0 &&
+				ch <= len(dfm.channlist) {
+				dfm.Channel = dfm.Channels[dfm.channlist[ch-1]]
+				dfm.printChannel()
+				dfm.GetSongs(doubanfm.New)
+				dfm.playSong(dfm.Next())
+			} else {
 				help()
+				prevOp = OpHelp
 				continue
 			}
-			if chl == 0 {
-				dfm.printChannels()
-				continue
-			}
-			if chl > 0 && chl <= len(dfm.Channels) {
-				dfm.Channel = chl
-			}
-			dfm.GetSongs(doubanfm.New)
-			dfm.playSong(dfm.Next())
 		}
 		prevOp = op
 	}
@@ -133,21 +161,5 @@ func main() {
 }
 
 func help() {
-	s := `Command list:
-	p: 	Pause or play
-	n: 	Next, next song
-	x:	Loop, loop playback
-	s:	Skip, skip current playlist
-	t: 	Trash, never play
-	r: 	Like
-	u:	Unlike
-	c:	Current playing info
-	l: 	Playlist
-	0: 	Channel list
-	N:	Change to Channel N, N stands for channel number, see channel list
-	z:	Login, Account login
-	q:	Quit
-	h:	Show this help
-`
-	fmt.Println(s)
+	fmt.Println(helpStr)
 }

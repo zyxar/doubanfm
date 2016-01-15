@@ -12,9 +12,14 @@ type Channel struct {
 	NameEn string `json:"name_en"`
 	AbbrEn string `json:"abbr_en"`
 	Seq    int    `json:"seq_id"`
+	Fav    bool
 }
 
-type LoginChannel struct {
+func (c Channel) String() string {
+	return string(c.Id) + " - " + c.Name
+}
+
+type MyChannel struct {
 	Artists   []Artist `json:"related_artists"`
 	Creator   Creator
 	Intro     string
@@ -26,6 +31,10 @@ type LoginChannel struct {
 	Num       json.Number `json:"song_num,Number"`
 	Collected string
 	HotSongs  []string `json:"hot_songs"`
+}
+
+func (c MyChannel) String() string {
+	return string(c.Id) + " - " + c.Name
 }
 
 type Artist struct {
@@ -104,7 +113,7 @@ func Channels() (chls []Channel, err error) {
 //	    }
 //	  }
 //	}
-func LoginChannels(id string) (favs []LoginChannel, recs []LoginChannel, err error) {
+func MyChannels(id string) (favs []MyChannel, recs []MyChannel, err error) {
 	resp, err := get(LoginChannelsUrl + "?uk=" + id)
 	if err != nil {
 		return
@@ -112,8 +121,8 @@ func LoginChannels(id string) (favs []LoginChannel, recs []LoginChannel, err err
 	var r struct {
 		Data struct {
 			Res struct {
-				Favs []LoginChannel `json:"fav_chls"`
-				Recs []LoginChannel `json:"rec_chls"`
+				Favs []MyChannel `json:"fav_chls"`
+				Recs []MyChannel `json:"rec_chls"`
 			}
 		}
 		Status bool

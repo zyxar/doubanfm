@@ -104,6 +104,7 @@ type Singer struct {
 //	    },
 //	  ]
 //	}
+// {"warning":"user_is_ananymous","r":0,"version_max":637,"is_show_quick_start":0,"song":[]}
 func Songs(types, cid, sid string, user *User) (songs []Song, err error) {
 	v := url.Values{}
 	v.Add("app_name", AppName)
@@ -120,8 +121,9 @@ func Songs(types, cid, sid string, user *User) (songs []Song, err error) {
 	}
 
 	resp, err := get(PeopleUrl + "?" + v.Encode())
+
 	if err != nil {
-		return
+		return nil, err
 	}
 
 	var r struct {
@@ -133,11 +135,15 @@ func Songs(types, cid, sid string, user *User) (songs []Song, err error) {
 	}
 
 	if err = decode(resp, &r); err != nil {
-		return
+		return nil, err
 	}
 
 	if r.R != 0 {
 		return nil, &r.dfmError
+	}
+
+	if len(r.Song) == 0 && r.dfmError.Error() != "" {
+		return r.Song, &r.dfmError
 	}
 
 	return r.Song, nil
