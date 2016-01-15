@@ -79,7 +79,7 @@ func main() {
 			}
 			err := dfm.Login()
 			if err != nil {
-				fmt.Println("\r>>>>>>>>> Login Failed:", err)
+				fmt.Println("\r>>>>>>>>> Access denied:", err)
 				continue
 			}
 			fmt.Println("\r>>>>>>>>> Access acquired.")

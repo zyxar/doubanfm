@@ -7,7 +7,6 @@ import (
 	"io"
 	"net"
 	"net/http"
-	"strconv"
 	"sync"
 	"time"
 )
@@ -52,16 +51,6 @@ func init() {
 		},
 	}
 	defaultConn.Mutex = sync.Mutex{}
-}
-
-// {"err":"wrong_version", "r":1}
-type dfmError struct {
-	R   int
-	Err string
-}
-
-func (e dfmError) Error() string {
-	return strconv.Itoa(e.R) + ": " + e.Err
 }
 
 func get(url string) (io.Reader, error) {
