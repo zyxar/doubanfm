@@ -1,7 +1,7 @@
 package main
 
 import (
-	"fmt"
+	"errors"
 	"sync"
 
 	"github.com/ziutek/glib"
@@ -17,7 +17,7 @@ type Player struct {
 func newPlayer() (*Player, error) {
 	pipe := gst.ElementFactoryMake("playbin", "mp3_pipe")
 	if pipe == nil {
-		return nil, fmt.Errorf("gstreamer error")
+		return nil, errors.New("gstreamer error")
 	}
 
 	return &Player{

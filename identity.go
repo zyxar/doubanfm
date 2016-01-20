@@ -33,7 +33,7 @@ type Identity struct {
 	anonymous bool `json:"-"`
 }
 
-var Anonymous = Identity{
+var AnonymousId = Identity{
 	User: User{Id: "-",
 		Name: "anonymous",
 	},
@@ -72,7 +72,7 @@ func (this Identity) SaveFile(fn string) error {
 		return err
 	}
 	defer f.Close()
-	return this.Save(f)
+	return json.NewEncoder(f).Encode(this)
 }
 
 func (this *Identity) Load(r io.Reader) error {
@@ -85,7 +85,7 @@ func (this *Identity) LoadFile(fn string) error {
 		return err
 	}
 	defer f.Close()
-	return this.Load(f)
+	return json.NewDecoder(f).Decode(this)
 }
 
 func (this *Identity) get(url string) (io.ReadCloser, error) {
@@ -221,8 +221,8 @@ func (this *Identity) GetChannels() ([]Channel, error) {
 //	    }
 //	  }
 //	}
-func (this *Identity) GetMyChannels(id string) ([]MyChannel, []MyChannel, error) {
-	resp, err := this.get(LoginChannelsUrl + "?uk=" + id)
+func (this *Identity) GetMyChannels() ([]MyChannel, []MyChannel, error) {
+	resp, err := this.get(LoginChannelsUrl + "?uk=" + this.Id)
 	if err != nil {
 		return nil, nil, err
 	}

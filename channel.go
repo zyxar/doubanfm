@@ -11,14 +11,16 @@ type Channel struct {
 	NameEn string `json:"name_en"`
 	AbbrEn string `json:"abbr_en"`
 	Seq    int    `json:"seq_id"`
-	Fav    bool
+	Fav    bool   `json:"-"`
 }
 
-func (c Channel) String() string {
-	if c.Id == "-3" {
-		return "\u2661 - " + c.Name
+var heartChannel = Channel{Id: "-3", Name: "红星兆赫"}
+
+func (this Channel) String() string {
+	if this.Id == "-3" {
+		return "\u2661 - " + this.Name
 	}
-	return string(c.Id) + " - " + c.Name
+	return string(this.Id) + " - " + this.Name
 }
 
 type MyChannel struct {
@@ -35,8 +37,15 @@ type MyChannel struct {
 	HotSongs  []string `json:"hot_songs"`
 }
 
-func (c MyChannel) String() string {
-	return string(c.Id) + " - " + c.Name
+func (this MyChannel) String() string {
+	return string(this.Id) + " - " + this.Name
+}
+
+func (this MyChannel) Channel() *Channel {
+	return &Channel{
+		Id:   this.Id,
+		Name: this.Name,
+	}
 }
 
 type Artist struct {
