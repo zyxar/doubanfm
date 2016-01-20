@@ -16,6 +16,9 @@ type Channel struct {
 }
 
 func (c Channel) String() string {
+	if c.Id == "-3" {
+		return "\u2661 - " + c.Name
+	}
 	return string(c.Id) + " - " + c.Name
 }
 
@@ -71,7 +74,7 @@ func Channels() (chls []Channel, err error) {
 		Channels []Channel
 	}
 
-	if err = decode(resp, &r); err != nil {
+	if err = json.NewDecoder(resp).Decode(&r); err != nil {
 		return
 	}
 
@@ -129,7 +132,7 @@ func MyChannels(id string) (favs []MyChannel, recs []MyChannel, err error) {
 		Msg    string
 	}
 
-	if err = decode(resp, &r); err != nil {
+	if err = json.NewDecoder(resp).Decode(&r); err != nil {
 		return
 	}
 

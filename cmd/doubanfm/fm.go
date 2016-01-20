@@ -3,9 +3,7 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"strconv"
 	"strings"
-	"time"
 
 	"github.com/ziutek/gst"
 	"github.com/zyxar/doubanfm"
@@ -231,21 +229,4 @@ func (this *DoubanFM) printPlaylist() {
 
 func (this *DoubanFM) printSong() {
 	fmt.Println(this.Song)
-}
-
-func (this *DoubanFM) printUser() {
-	if this.User == nil {
-		fmt.Println("\r>>>>>>>>> Not logon")
-		return
-	}
-	fmt.Printf("\r    Id:\t%s\n  Name:\t%s\n Token:\t%s\nExpire:\t%s\n",
-		this.User.Id, this.User.Name, this.User.Token, parseTime(this.User.Expire))
-}
-
-func parseTime(ut string) string {
-	if sec, err := strconv.ParseInt(ut, 10, 64); err == nil {
-		t := time.Unix(sec, 0)
-		return t.String()
-	}
-	return ut
 }

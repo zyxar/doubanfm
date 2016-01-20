@@ -7,7 +7,7 @@ import (
 	"io"
 	"net"
 	"net/http"
-	"sync"
+	"os"
 	"time"
 )
 
@@ -27,7 +27,6 @@ var (
 	cookies     = make(map[string]*http.Cookie) // cookies
 	defaultConn struct {
 		*http.Client
-		sync.Mutex
 		timeout time.Duration
 	}
 )
@@ -50,7 +49,30 @@ func init() {
 			Proxy: http.ProxyFromEnvironment,
 		},
 	}
-	defaultConn.Mutex = sync.Mutex{}
+}
+
+func WriteCookieFile(fn string) (err error) {
+	w, err := os.Create(fn)
+	if err != nil {
+		return
+	}
+	if err = json.NewEncoder(w).Encode(cookies); err != nil {
+		return
+	}
+	err = w.Close()
+	return
+}
+
+func ReadCookieFile(fn string) (err error) {
+	r, err := os.Open(fn)
+	if err != nil {
+		return
+	}
+	if err = json.NewDecoder(r).Decode(&cookies); err != nil {
+		return
+	}
+	err = r.Close()
+	return
 }
 
 func get(url string) (io.Reader, error) {
@@ -92,7 +114,6 @@ func saveCookies(cks []*http.Cookie) {
 func routine(req *http.Request) (*http.Response, error) {
 	timeout := false
 retry:
-	defaultConn.Lock()
 	timer := time.AfterFunc(defaultConn.timeout, func() {
 		defaultConn.Client.Transport.(*http.Transport).CancelRequest(req)
 		timeout = true
@@ -101,7 +122,6 @@ retry:
 	if timer != nil {
 		timer.Stop()
 	}
-	defaultConn.Unlock()
 	if err == io.EOF && !timeout {
 		goto retry
 	}
@@ -123,8 +143,4 @@ func request(method, url, bodyType string, body io.Reader) (*http.Response, erro
 		r.AddCookie(cookie)
 	}
 	return routine(r)
-}
-
-func decode(r io.Reader, v interface{}) error {
-	return json.NewDecoder(r).Decode(v)
 }

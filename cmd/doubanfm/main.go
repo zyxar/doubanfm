@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -38,8 +39,13 @@ func init() {
 
 func main() {
 	flag.Parse()
-	term := newTerm(PROMPT)
+	var err error
+	if err = mkHomeDir(); err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
 
+	term := newTerm(PROMPT)
 	var quit = func(code int) {
 		term.Restore()
 		fmt.Println("\r>>>>>>>>> Bye!")
@@ -54,16 +60,40 @@ func main() {
 
 	var logon = func(uid string) {
 		if dfm.User != nil {
-			dfm.printUser()
+			fmt.Println(dfm.User)
 			return
 		}
-		err := dfm.Login(uid)
+		fn := filepath.Join(homeDir, uid)
+		cookieFn := filepath.Join(homeDir, "cookies.json")
+		dfm.User = &doubanfm.User{}
+		err := dfm.User.LoadFile(fn)
+		if err == nil {
+			if err = doubanfm.ReadCookieFile(cookieFn); err == nil {
+				fmt.Println("\r>>>>>>>>> Token loaded.")
+				// TODO: check session status.
+				return
+			}
+			fmt.Println("\r>>>>>>>>> Token loading error:", err)
+		} else {
+			fmt.Println("\r>>>>>>>>> Token loading error:", err)
+		}
+
+		err = dfm.Login(uid)
 		if err != nil {
 			fmt.Println("\r>>>>>>>>> Access denied:", err)
 			return
 		}
 		fmt.Println("\r>>>>>>>>> Access acquired.")
-		dfm.printUser()
+		fmt.Println(dfm.User)
+		if err = dfm.User.SaveFile(fn); err != nil {
+			fmt.Println("\r>>>>>>>>> Token saving error:", err)
+		} else {
+			if err = doubanfm.WriteCookieFile(cookieFn); err == nil {
+				fmt.Println("\r>>>>>>>>> Token saved.")
+			} else {
+				fmt.Println("\r>>>>>>>>> Token saving error:", err)
+			}
+		}
 		dfm.GetMyChannels()
 		return
 	}

@@ -2,6 +2,7 @@ package doubanfm
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"math/rand"
 	"net/url"
@@ -134,7 +135,7 @@ func Songs(types, cid, sid string, user *User) (songs []Song, err error) {
 		dfmError
 	}
 
-	if err = decode(resp, &r); err != nil {
+	if err = json.NewDecoder(resp).Decode(&r); err != nil {
 		return nil, err
 	}
 
