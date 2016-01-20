@@ -2,18 +2,9 @@ package doubanfm
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
-	"math/rand"
-	"net/url"
-	"strconv"
 	"strings"
-	"time"
 )
-
-func init() {
-	rand.Seed(int64(time.Now().Nanosecond()))
-}
 
 type Song struct {
 	Sid        string
@@ -63,89 +54,4 @@ type Singer struct {
 	SiteArtist  bool `json:"is_site_artist"`
 	Id          string
 	Name        string
-}
-
-// GET http://www.douban.com/j/app/radio/people?app_name=radio_desktop_win&version=100&type=n&channel=1
-//	{
-//	  "logout":1,
-//	  "r":0,
-//	  "version_max":100,
-//	  "is_show_quick_start":0,
-//	  "song":[
-//	    {
-//	      "albumtitle":"Album Title",
-//	      "file_ext":"mp3",
-//	      "album":"\/subject\/1407573\/",
-//	      "ssid":"b037",
-//	      "title":"Title",
-//	      "sid":"630223",
-//	      "sha256":"53b19c0854e9016b39c6144ee6c0da08d5b01393b5899544080cc3d368939245",
-//	      "status":0,
-//	      "picture":"http:\/\/img4.douban.com\/lpic\/s1734968.jpg",
-//	      "alert_msg":"",
-//	      "company":"New World Music",
-//	      "rating_avg":4.30244,
-//	      "public_time":"1992",
-//	      "singers":[
-//	        {
-//	          "related_site_id":0,
-//	          "is_site_artist":false,
-//	          "id":"4204",
-//	          "name":"Kitaro"
-//	        }
-//	      ],
-//	      "like":0,
-//	      "songlists_count":11,
-//	      "artist":"Kitaro",
-//	      "url":"http:\/\/mr3.douban.com\/201508251840\/fd0ebea86b6626f0caa00faff3d28eb2\/view\/song\/small\/p630223_128k.mp3",
-//	      "subtype":"",
-//	      "length":382,
-//	      "aid":"1407573",
-//	      "kbps":"128"
-//	    },
-//	  ]
-//	}
-// {"warning":"user_is_ananymous","r":0,"version_max":637,"is_show_quick_start":0,"song":[]}
-func Songs(types, cid, sid string, user *User) (songs []Song, err error) {
-	v := url.Values{}
-	v.Add("app_name", AppName)
-	v.Add("version", AppVersion)
-	v.Add("type", types)
-	v.Add("channel", cid)
-	v.Add("sid", sid)
-	v.Add("kbps", "128")
-	v.Add("preventCache", strconv.FormatFloat(rand.Float64(), 'f', 16, 64))
-	if user != nil {
-		v.Add("user_id", user.Id)
-		v.Add("token", user.Token)
-		v.Add("expire", user.Expire)
-	}
-
-	resp, err := get(PeopleUrl + "?" + v.Encode())
-
-	if err != nil {
-		return nil, err
-	}
-
-	var r struct {
-		Song       []Song
-		Logout     int
-		VMax       int `json:"version_max"`
-		QuickStart int `json"is_show_quick_start"`
-		dfmError
-	}
-
-	if err = json.NewDecoder(resp).Decode(&r); err != nil {
-		return nil, err
-	}
-
-	if r.R != 0 {
-		return nil, &r.dfmError
-	}
-
-	if len(r.Song) == 0 && r.dfmError.Error() != "" {
-		return r.Song, &r.dfmError
-	}
-
-	return r.Song, nil
 }

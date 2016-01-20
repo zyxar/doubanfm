@@ -1,13 +1,10 @@
 package doubanfm
 
 import (
-	"bytes"
-	"encoding/json"
 	"errors"
 	"io"
 	"net"
 	"net/http"
-	"os"
 	"time"
 )
 
@@ -24,7 +21,6 @@ const (
 )
 
 var (
-	cookies     = make(map[string]*http.Cookie) // cookies
 	defaultConn struct {
 		*http.Client
 		timeout time.Duration
@@ -51,66 +47,6 @@ func init() {
 	}
 }
 
-func WriteCookieFile(fn string) (err error) {
-	w, err := os.Create(fn)
-	if err != nil {
-		return
-	}
-	if err = json.NewEncoder(w).Encode(cookies); err != nil {
-		return
-	}
-	err = w.Close()
-	return
-}
-
-func ReadCookieFile(fn string) (err error) {
-	r, err := os.Open(fn)
-	if err != nil {
-		return
-	}
-	if err = json.NewDecoder(r).Decode(&cookies); err != nil {
-		return
-	}
-	err = r.Close()
-	return
-}
-
-func get(url string) (io.Reader, error) {
-	r, err := request("GET", url, "", nil)
-	if err != nil {
-		return nil, err
-	}
-	defer r.Body.Close()
-
-	saveCookies(r.Cookies())
-
-	b := &bytes.Buffer{}
-	_, err = io.Copy(b, r.Body)
-
-	return b, err
-}
-
-func post(url, bodyType string, body io.Reader) (io.Reader, error) {
-	r, err := request("POST", url, bodyType, body)
-	if err != nil {
-		return nil, err
-	}
-	defer r.Body.Close()
-
-	saveCookies(r.Cookies())
-
-	b := &bytes.Buffer{}
-	_, err = io.Copy(b, r.Body)
-
-	return b, err
-}
-
-func saveCookies(cks []*http.Cookie) {
-	for _, ck := range cks {
-		cookies[ck.Name] = ck
-	}
-}
-
 func routine(req *http.Request) (*http.Response, error) {
 	timeout := false
 retry:
@@ -126,21 +62,7 @@ retry:
 		goto retry
 	}
 	if timeout {
-		err = errors.New("Request time out.")
+		err = errors.New("request time out.")
 	}
 	return resp, err
-}
-
-func request(method, url, bodyType string, body io.Reader) (*http.Response, error) {
-	r, err := http.NewRequest(method, url, body)
-	if err != nil {
-		return nil, err
-	}
-	if bodyType != "" {
-		r.Header.Set("Content-Type", bodyType)
-	}
-	for _, cookie := range cookies {
-		r.AddCookie(cookie)
-	}
-	return routine(r)
 }

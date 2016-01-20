@@ -52,68 +52,57 @@ func main() {
 		os.Exit(code)
 	}
 
-	dfm, err := NewDoubanFM()
+	session, err := NewSession()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		quit(1)
 	}
 
 	var logon = func(uid string) {
-		if dfm.User != nil {
-			fmt.Println(dfm.User)
+		if session.User != nil {
+			fmt.Println(session.User)
 			return
 		}
 		fn := filepath.Join(homeDir, uid)
-		cookieFn := filepath.Join(homeDir, "cookies.json")
-		dfm.User = &doubanfm.User{}
-		err := dfm.User.LoadFile(fn)
-		if err == nil {
-			if err = doubanfm.ReadCookieFile(cookieFn); err == nil {
-				fmt.Println("\r>>>>>>>>> Token loaded.")
-				// TODO: check session status.
-				return
-			}
+		err := session.User.LoadFile(fn)
+		if err != nil {
 			fmt.Println("\r>>>>>>>>> Token loading error:", err)
 		} else {
-			fmt.Println("\r>>>>>>>>> Token loading error:", err)
+			fmt.Println("\r>>>>>>>>> Token loaded.")
 		}
 
-		err = dfm.Login(uid)
+		err = session.Login(uid)
 		if err != nil {
 			fmt.Println("\r>>>>>>>>> Access denied:", err)
 			return
 		}
 		fmt.Println("\r>>>>>>>>> Access acquired.")
-		fmt.Println(dfm.User)
-		if err = dfm.User.SaveFile(fn); err != nil {
+		fmt.Println(session.User)
+		if err = session.User.SaveFile(fn); err != nil {
 			fmt.Println("\r>>>>>>>>> Token saving error:", err)
 		} else {
-			if err = doubanfm.WriteCookieFile(cookieFn); err == nil {
-				fmt.Println("\r>>>>>>>>> Token saved.")
-			} else {
-				fmt.Println("\r>>>>>>>>> Token saving error:", err)
-			}
+			fmt.Println("\r>>>>>>>>> Token saved.")
 		}
-		dfm.GetMyChannels()
+		session.GetMyChannels()
 		return
 	}
 
-	dfm.GetChannels()
+	session.GetChannels()
 	if userId != "" {
 		logon(userId)
 	}
-	dfm.SetDefaultChannel()
-	if dfm.Channel == nil {
+	session.SetDefaultChannel()
+	if session.Channel == nil {
 		fmt.Println("\r>>>>>>>>> Error in fetching channels.")
 		quit(1)
 	}
-	dfm.printChannel()
-	dfm.GetSongs(doubanfm.New)
-	if dfm.Empty() {
+	session.printChannel()
+	session.GetSongs(doubanfm.New)
+	if session.Empty() {
 		fmt.Println("\r>>>>>>>>> Error in fetching songs.")
 		quit(1)
 	}
-	dfm.playSong(dfm.Next())
+	session.playSong(session.Next())
 
 	var op string
 	var prevOp = OpNext
@@ -133,52 +122,52 @@ func main() {
 			op = prevOp
 			goto PREV
 		case OpPlay:
-			dfm.Paused = !dfm.Paused
-			if dfm.Paused {
-				dfm.player.Pause()
+			session.Paused = !session.Paused
+			if session.Paused {
+				session.player.Pause()
 			} else {
-				dfm.player.Resume()
+				session.player.Resume()
 			}
 		case OpLoop:
-			dfm.Loop = !dfm.Loop
+			session.Loop = !session.Loop
 		case OpNext:
-			if dfm.Empty() {
-				dfm.GetSongs(doubanfm.Last)
+			if session.Empty() {
+				session.GetSongs(doubanfm.Last)
 			}
-			dfm.playSong(dfm.Next())
+			session.playSong(session.Next())
 		case OpSkip:
-			dfm.GetSongs(doubanfm.Skip)
-			dfm.playSong(dfm.Next())
+			session.GetSongs(doubanfm.Skip)
+			session.playSong(session.Next())
 		case OpTrash:
-			dfm.GetSongs(doubanfm.Bypass)
-			dfm.playSong(dfm.Next())
+			session.GetSongs(doubanfm.Bypass)
+			session.playSong(session.Next())
 		case OpLike:
-			dfm.GetSongs(doubanfm.Like)
-			dfm.Song.Like = 1
+			session.GetSongs(doubanfm.Like)
+			session.Song.Like = 1
 		case OpUnlike:
-			dfm.GetSongs(doubanfm.Unlike)
-			dfm.Song.Like = 0
+			session.GetSongs(doubanfm.Unlike)
+			session.Song.Like = 0
 		case OpLogin:
 			logon("")
 			continue
 		case OpList:
-			dfm.printPlaylist()
+			session.printPlaylist()
 		case OpSong:
-			dfm.printSong()
+			session.printSong()
 		case OpExit:
 			quit(0)
 		case OpChann:
-			dfm.printChannels()
+			session.printChannels()
 		case OpHelp:
 			help()
 		default:
 			if ch, err := strconv.Atoi(op); err == nil &&
 				ch > 0 &&
-				ch <= len(dfm.channlist) {
-				dfm.Channel = dfm.Channels[dfm.channlist[ch-1]]
-				dfm.printChannel()
-				dfm.GetSongs(doubanfm.New)
-				dfm.playSong(dfm.Next())
+				ch <= len(session.channlist) {
+				session.Channel = session.Channels[session.channlist[ch-1]]
+				session.printChannel()
+				session.GetSongs(doubanfm.New)
+				session.playSong(session.Next())
 			} else {
 				fmt.Println("\r>>>>>>>>> No such operation:", op)
 				help()

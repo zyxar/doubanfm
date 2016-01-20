@@ -27,39 +27,40 @@ const (
 	PROMPT   = "DoubanFM> "
 )
 
-type DoubanFM struct {
+type Session struct {
 	Channels  map[string]*doubanfm.Channel // channel list
 	Songs     []doubanfm.Song              // playlist
 	Song      doubanfm.Song                // current song
 	Channel   *doubanfm.Channel            // current channel
 	Paused    bool                         // play/pause status
 	Loop      bool                         // loop status
-	User      *doubanfm.User               // login user
+	User      *doubanfm.Identity           // login user
 	player    *Player                      // gstreamer player
 	channlist []string
 }
 
-func NewDoubanFM() (*DoubanFM, error) {
+func NewSession() (*Session, error) {
 	player, err := newPlayer()
 	if err != nil {
 		return nil, err
 	}
-	dfm := &DoubanFM{
+	session := &Session{
 		Channels:  make(map[string]*doubanfm.Channel),
+		User:      &doubanfm.Anonymous,
 		player:    player,
 		channlist: make([]string, 1, 100),
 	}
-	dfm.channlist[0] = "-3"
-	dfm.Channels["-3"] = &doubanfm.Channel{Id: "-3", Name: "红星兆赫"}
-	player.init(dfm.onMessage)
-	return dfm, nil
+	session.channlist[0] = "-3"
+	session.Channels["-3"] = &doubanfm.Channel{Id: "-3", Name: "红星兆赫"}
+	player.init(session.onMessage)
+	return session, nil
 }
 
-func (this *DoubanFM) Empty() bool {
+func (this *Session) Empty() bool {
 	return len(this.Songs) == 0
 }
 
-func (this *DoubanFM) Next() (song *doubanfm.Song) {
+func (this *Session) Next() (song *doubanfm.Song) {
 	if this.Empty() {
 		return nil
 	}
@@ -68,7 +69,7 @@ func (this *DoubanFM) Next() (song *doubanfm.Song) {
 	return &this.Song
 }
 
-func (this *DoubanFM) onMessage(bus *gst.Bus, msg *gst.Message) {
+func (this *Session) onMessage(bus *gst.Bus, msg *gst.Message) {
 	switch msg.GetType() {
 	case gst.MESSAGE_EOS:
 		if this.Loop {
@@ -88,7 +89,7 @@ func (this *DoubanFM) onMessage(bus *gst.Bus, msg *gst.Message) {
 	}
 }
 
-func (this *DoubanFM) playSong(song *doubanfm.Song) {
+func (this *Session) playSong(song *doubanfm.Song) {
 	if song == nil {
 		return
 	}
@@ -96,8 +97,8 @@ func (this *DoubanFM) playSong(song *doubanfm.Song) {
 	this.player.Play(song.Url)
 }
 
-func (this *DoubanFM) GetChannels() {
-	chls, err := doubanfm.Channels()
+func (this *Session) GetChannels() {
+	chls, err := this.User.GetChannels()
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -109,11 +110,11 @@ func (this *DoubanFM) GetChannels() {
 	}
 }
 
-func (this *DoubanFM) GetMyChannels() {
-	if this.User == nil {
+func (this *Session) GetMyChannels() {
+	if this.User == &doubanfm.Anonymous {
 		return
 	}
-	favs, recs, err := doubanfm.MyChannels(this.User.Id)
+	favs, recs, err := this.User.GetMyChannels(this.User.Id)
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -144,12 +145,12 @@ func toChannel(chl doubanfm.MyChannel) doubanfm.Channel {
 	}
 }
 
-func (this *DoubanFM) GetSongs(types string) {
+func (this *Session) GetSongs(types string) {
 	if this.Channel == nil {
 		fmt.Println("\r>>>>>>>>> Error in fetching songs: nil channel")
 		return
 	}
-	songs, err := doubanfm.Songs(types, this.Channel.Id.String(), this.Song.Sid, this.User)
+	songs, err := this.User.GetSongs(types, this.Channel.Id.String(), this.Song.Sid)
 	if err != nil {
 		fmt.Println("\r>>>>>>>>> Error in fetching songs:", err)
 		return
@@ -160,7 +161,7 @@ func (this *DoubanFM) GetSongs(types string) {
 	}
 }
 
-func (this *DoubanFM) Login(uid string) error {
+func (this *Session) Login(uid string) error {
 	term := newTerm("Douban Id: ")
 	defer term.Restore()
 	var err error
@@ -178,23 +179,23 @@ func (this *DoubanFM) Login(uid string) error {
 	if err != nil {
 		return err
 	}
-	this.User, err = doubanfm.Login(uid, string(pwd))
-	return err
+	this.User = doubanfm.NewIdentity(uid)
+	return this.User.Login(string(pwd))
 }
 
-func (this *DoubanFM) SetDefaultChannel() {
-	if this.User != nil {
+func (this *Session) SetDefaultChannel() {
+	if this.User != &doubanfm.Anonymous {
 		this.Channel = this.Channels["-3"]
 	} else {
 		this.Channel = this.Channels["0"]
 	}
 }
 
-func (this *DoubanFM) printChannel() {
+func (this *Session) printChannel() {
 	fmt.Println(this.Channel.String())
 }
 
-func (this *DoubanFM) printChannels() {
+func (this *Session) printChannels() {
 	b := &bytes.Buffer{}
 	for j, id := range this.channlist {
 		cur := "-"
@@ -210,7 +211,7 @@ func (this *DoubanFM) printChannels() {
 	fmt.Println(b)
 }
 
-func (this *DoubanFM) printPlaylist() {
+func (this *Session) printPlaylist() {
 	b := &bytes.Buffer{}
 	if this.Song.Sid != "" {
 		loop := "-"
@@ -227,6 +228,6 @@ func (this *DoubanFM) printPlaylist() {
 	fmt.Println(b)
 }
 
-func (this *DoubanFM) printSong() {
+func (this *Session) printSong() {
 	fmt.Println(this.Song)
 }
