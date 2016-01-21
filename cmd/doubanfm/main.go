@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -26,6 +25,7 @@ const (
 	OpList   = "l"
 	OpSong   = "c"
 	OpLogin  = "z"
+	OpId     = "i"
 	OpHelp   = "h"
 	OpExit   = "q"
 	OpChann  = "0"
@@ -52,6 +52,7 @@ func init() {
              0: Channel list
              N: Change to Channel N, N stands for channel number, see channel list
              z: Login, Account login
+             i: Current Id
              q: Quit
              h: Show this help
 `
@@ -79,27 +80,44 @@ func main() {
 	}
 
 	session := doubanfm.NewSession()
-	var logon = func(uid string) error {
-		return session.LoginAs(uid, func() (string, error) {
-			term := newTerm("Douban Id:")
-			defer term.Restore()
-			var err error
-			if uid == "" {
-				uid, err = term.ReadLine()
-				if err != nil {
-					return "", err
-				}
-			}
-			uid = strings.TrimSpace(uid)
-			if len(uid) == 0 {
-				return "", errors.New("empty id")
-			}
-			passwd, err := term.ReadPassword("Password: ")
+	var logon = func(uid string) {
+		term := newTerm("Douban Id:")
+		defer term.Restore()
+		var err error
+		if uid == "" {
+			uid, err = term.ReadLine()
 			if err != nil {
-				return "", err
+				fmt.Println("\r>>>>>>>>> Access denied:", err)
+				return
 			}
-			return passwd, nil
-		})
+		}
+		uid = strings.TrimSpace(uid)
+		if len(uid) == 0 {
+			fmt.Println("\r>>>>>>>>> Access denied: empty id")
+			return
+		}
+
+		tokenFn := filepath.Join(homeDir, uid)
+		if err = session.LoadFile(tokenFn); err == nil {
+			fmt.Println("\r>>>>>>>>> Token loaded from", tokenFn)
+			fmt.Println("\r>>>>>>>>> Access acquired:")
+			fmt.Println(session.Id())
+			return
+		}
+
+		if err = session.LoginAs(uid, func() (string, error) {
+			return term.ReadPassword("Password: ")
+		}); err != nil {
+			fmt.Println("\r>>>>>>>>> Access denied:", err)
+		} else {
+			fmt.Println("\r>>>>>>>>> Access acquired:")
+			fmt.Println(session.Id())
+			if err = session.SaveFile(tokenFn); err != nil {
+				fmt.Println("\r>>>>>>>>> Token saving error:", err)
+			} else {
+				fmt.Println("\r>>>>>>>>> Token saved as", tokenFn)
+			}
+		}
 	}
 
 	var playSong = func(song *doubanfm.Song) {
@@ -116,9 +134,9 @@ func main() {
 				playSong(session.NextSong())
 				return
 			}
-			session.GetSongs(doubanfm.End)
+			session.FetchSongs(doubanfm.End)
 			if session.SongNum() == 0 {
-				session.GetSongs(doubanfm.Last)
+				session.FetchSongs(doubanfm.Last)
 			}
 			playSong(session.NextSong())
 		case gst.MESSAGE_ERROR:
@@ -128,31 +146,25 @@ func main() {
 		}
 	})
 
-	session.FetchChannels()
+	if err = session.FetchChannels(); err != nil {
+		fmt.Println("\r>>>>>>>>> Error in fetching channels:", err)
+	}
 	if userId != "" {
-		if err = logon(userId); err != nil {
-			fmt.Println("\r>>>>>>>>> Access denied:", err)
-			quit(1)
-		}
-		fmt.Println("\r>>>>>>>>> Access acquired.")
-		tokenFn := filepath.Join(homeDir, userId)
-		if err = session.SaveFile(tokenFn); err != nil {
-			fmt.Println("\r>>>>>>>>> Token saving error:", err)
-		} else {
-			fmt.Println("\r>>>>>>>>> Token saved as", tokenFn)
+		logon(userId)
+		if err = session.FetchMyChannels(); err != nil {
+			fmt.Println("\r>>>>>>>>> Error in fetching channels:", err)
 		}
 	}
 
 	if session.RandomChannel() == nil {
-		fmt.Println("\r>>>>>>>>> Error in fetching channels.")
+		fmt.Println("\r>>>>>>>>> No channel in list.")
 		quit(1)
 	} else {
 		fmt.Println(session.Channel().String())
 	}
 
-	session.GetSongs(doubanfm.New)
-	if session.SongNum() == 0 {
-		fmt.Println("\r>>>>>>>>> Error in fetching songs.")
+	if err = session.FetchSongs(doubanfm.New); err != nil {
+		fmt.Println("\r>>>>>>>>> Error in fetching songs:", err)
 		quit(1)
 	}
 	playSong(session.NextSong())
@@ -186,27 +198,29 @@ func main() {
 			session.Loop = !session.Loop
 		case OpNext:
 			if session.SongNum() == 0 {
-				session.GetSongs(doubanfm.Last)
+				session.FetchSongs(doubanfm.Last)
 			}
 			playSong(session.NextSong())
 		case OpSkip:
-			session.GetSongs(doubanfm.Skip)
+			session.FetchSongs(doubanfm.Skip)
 			playSong(session.NextSong())
 		case OpTrash:
-			session.GetSongs(doubanfm.Bypass)
+			session.FetchSongs(doubanfm.Bypass)
 			playSong(session.NextSong())
 		case OpLike:
-			session.GetSongs(doubanfm.Like)
+			session.FetchSongs(doubanfm.Like)
 			session.Song().Like = 1
 		case OpUnlike:
-			session.GetSongs(doubanfm.Unlike)
+			session.FetchSongs(doubanfm.Unlike)
 			session.Song().Like = 0
 		case OpLogin:
 			logon("")
 			continue
+		case OpId:
+			fmt.Println(session.Id())
 		case OpList:
 			for _, song := range session.Songs() {
-				fmt.Printf("%s %s\n", song.Title, song.Artist)
+				fmt.Printf("%s - %s\n", song.Title, song.Artist)
 			}
 		case OpSong:
 			fmt.Println(session.Song())
@@ -225,9 +239,6 @@ func main() {
 					continue
 				}
 				fmt.Println(session.Channel().String())
-				if err = session.GetSongs(doubanfm.New); err != nil {
-					fmt.Println("\r>>>>>>>>>", err)
-				}
 				playSong(session.NextSong())
 			} else {
 				fmt.Println("\r>>>>>>>>> No such operation:", op)

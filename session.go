@@ -6,12 +6,12 @@ import (
 )
 
 type Session struct {
+	id       *Identity
 	channels map[string]*Channel
 	chanIds  []string
 	songs    []Song
 	channel  *Channel
 	song     Song
-	id       *Identity
 	Loop     bool
 }
 
@@ -24,6 +24,10 @@ func NewSession() *Session {
 	session.chanIds[0] = "-3"
 	session.channels["-3"] = &heartChannel
 	return session
+}
+
+func (this Session) Id() string {
+	return this.id.String()
 }
 
 func (this Session) SongNum() int {
@@ -80,7 +84,7 @@ func (this *Session) FetchChannels() error {
 	return nil
 }
 
-func (this *Session) GetSongs(types string) error {
+func (this *Session) FetchSongs(types string) error {
 	if this.channel == nil {
 		return errors.New("nil channel")
 	}
@@ -112,7 +116,12 @@ func (this *Session) LoginAs(uid string, readPasswd PasswordReadFunc) error {
 
 func (this *Session) SetChannel(i int) error {
 	if i > 0 && i <= len(this.chanIds) {
+		prevChannel := this.channel
 		this.channel = this.channels[this.chanIds[i-1]]
+		if err := this.FetchSongs(New); err != nil {
+			this.channel = prevChannel
+			return err
+		}
 		return nil
 	}
 	return errors.New("no such channel")
@@ -120,6 +129,9 @@ func (this *Session) SetChannel(i int) error {
 
 func (this *Session) RandomChannel() *Channel {
 	for _, channel := range this.channels {
+		if channel.Id == "-3" && this.id.anonymous {
+			continue
+		}
 		this.channel = channel
 		break
 	}
@@ -127,7 +139,12 @@ func (this *Session) RandomChannel() *Channel {
 }
 
 func (this *Session) LoadFile(fn string) error {
-	return this.id.LoadFile(fn)
+	if id, err := NewIdentityFromFile(fn); err != nil {
+		return err
+	} else {
+		this.id = id
+	}
+	return nil
 }
 
 func (this Session) SaveFile(fn string) error {

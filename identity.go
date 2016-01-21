@@ -34,16 +34,17 @@ type Identity struct {
 }
 
 var AnonymousId = Identity{
-	User: User{Id: "-",
-		Name: "anonymous",
+	User: User{
+		Name:  "anonymous",
+		Email: "-",
 	},
 	Cookies:   make(map[string]*http.Cookie),
 	anonymous: true,
 }
 
-func NewIdentity(uid string) *Identity {
+func NewIdentity(email string) *Identity {
 	return &Identity{
-		User:      User{Id: uid},
+		User:      User{Email: email},
 		Cookies:   make(map[string]*http.Cookie),
 		anonymous: false,
 	}
@@ -75,17 +76,25 @@ func (this Identity) SaveFile(fn string) error {
 	return json.NewEncoder(f).Encode(this)
 }
 
-func (this *Identity) Load(r io.Reader) error {
-	return json.NewDecoder(r).Decode(this)
+func NewIdentityFromReader(r io.Reader) (*Identity, error) {
+	this := &Identity{}
+	if err := json.NewDecoder(r).Decode(this); err != nil {
+		return nil, err
+	}
+	return this, nil
 }
 
-func (this *Identity) LoadFile(fn string) error {
+func NewIdentityFromFile(fn string) (*Identity, error) {
 	f, err := os.Open(fn)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer f.Close()
-	return json.NewDecoder(f).Decode(this)
+	this := &Identity{}
+	if err = json.NewDecoder(f).Decode(this); err != nil {
+		return nil, err
+	}
+	return this, nil
 }
 
 func (this *Identity) get(url string) (io.ReadCloser, error) {
@@ -114,7 +123,7 @@ func (this *Identity) Login(password string) error {
 	w := multipart.NewWriter(formdata)
 	w.WriteField("app_name", AppName)
 	w.WriteField("version", AppVersion)
-	w.WriteField("email", this.Id)
+	w.WriteField("email", this.Email)
 	w.WriteField("password", password)
 	w.Close()
 	req, err := http.NewRequest("POST", LoginUrl, formdata)
@@ -144,6 +153,7 @@ func (this *Identity) Login(password string) error {
 	if r.R != 0 {
 		return &r.dfmError
 	}
+	this.Id = r.Id
 	this.Name = r.Name
 	this.Email = r.Email
 	this.Token = r.Token
