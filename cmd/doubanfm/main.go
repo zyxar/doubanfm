@@ -5,9 +5,11 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"strconv"
 	"strings"
+	"syscall"
 
 	"github.com/ziutek/gst"
 	"github.com/zyxar/doubanfm"
@@ -78,6 +80,16 @@ func main() {
 		fmt.Println("\r>>>>>>>>> Bye!")
 		os.Exit(code)
 	}
+
+	go func() {
+		c := make(chan os.Signal, 1)
+		signal.Notify(c, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGUSR1)
+		for s := range c {
+			fmt.Printf("\r>>>>>>>>> %v caught, exit\n", s)
+			quit(1)
+			break
+		}
+	}()
 
 	session := doubanfm.NewSession()
 	var logon = func(uid string) {
