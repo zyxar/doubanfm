@@ -34,4 +34,4 @@ Command list:
 
 `go get github.com/zyxar/doubanfm/cmd/doubanfm`
 
-正常播放音乐需要安装 gstreamer 插件。例如在 OS X 下：`brew install gst-libav`
+正常播放音乐需要安装 gstreamer 插件。例如在 OS X 下：`brew install gst-libav gst-plugins-good`
